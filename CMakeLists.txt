@@ -3,4 +3,6 @@ project(Lox_Interpreter)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(lox main.cpp scanner.cpp scanner.h token.cpp token.h)
+include_directories( ./include ./src)
+
+add_executable(lox src/main.cpp src/scanner.cpp src/token.cpp src/ast-tools.cpp)

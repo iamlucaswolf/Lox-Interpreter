@@ -17,10 +17,10 @@ The project is organized into several independent components:
 - to be continued...
 
 ### Scanner
-Source: [`scanner.h`](scanner.h)
+Source: [`scanner.h`](src/scanner.h),[`token.h`](src/token.h)
 
 The scanner dissects Lox source code into a list of syntactical tokens. 
-Contrary to the book's approach, this scanner is implemented as a single 
+Contrary to the book's approach, the scanner is implemented as a single 
 function `vector<Token> scan(const string &int)`, rather than a `Scanner` class.
 
 This decision has been made, since scanning is conceptually a function 
@@ -49,10 +49,9 @@ string source { get_source(...) };
 vector<Token> tokens { scan(source) }; // yields expected list of tokens
 
 // Calling scan() a second time, perhaps accidentally
-tokens = scan(source); // yields expected list of tokens; scan() is idempotent
+tokens = scan(source); // yields expected list of tokens 
 ```
 
 Nevertheless, `scan()` still relies on  a `Scanner` class similar to Nystorm's .
-This could have probably been refactored into a fully-fledged NFA/DFA-based 
-implementation, however I ultimately decided against that in order to not 
-over-engineer this rather trivial part of the project.
+I might refactor it into a "proper" NFA/DFA-based implementation at a later point
+in time, but for now it's fairly sufficient.

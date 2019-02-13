@@ -7,9 +7,9 @@
 
 #include <string>
 #include <iostream>
+#include <variant>
 
 struct Token {
-public:
 
     enum class Type {
         // NOTE The C++ Core Guidelines explicitly advise to use lowercase identifiers for enum members (rule Enum.5). We

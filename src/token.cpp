@@ -6,6 +6,7 @@
 
 using namespace std;
 
+
 ostream& operator<<(ostream &out, const TokenType &type) {
 
     // The monstrous (and somewhat stupid) switch-statement below could have been avoided by using common enum
