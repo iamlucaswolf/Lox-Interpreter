@@ -2,7 +2,7 @@
 // Created by Lucas Wolf on 2019-02-13.
 //
 
-#include "ast.h"
+#include "data/ast.h"
 #include "ast-tools.h"
 
 using namespace std;
@@ -18,11 +18,11 @@ string Printer::print(Expression &expression) {
 
 void Printer::visit(const Literal &expression) {
 
-    const string &lexeme = expression.literal.lexeme;
+    const string &lexeme = expression.literal->lexeme;
 
     // TODO maybe this should be made a method of token, like variant<monostate, double, string> value() and then
     // converting the value back to string?
-    switch (expression.literal.type) {
+    switch (expression.literal->type) {
 
         case Token::Type::NUMBER:
         case Token::Type::IDENTIFIER:
@@ -39,15 +39,15 @@ void Printer::visit(const Literal &expression) {
 }
 
 void Printer::visit(const Binary &expression)  {
-    parenthesized(expression.infix.lexeme, {&expression.left, &expression.right});
+    parenthesized(expression.infix->lexeme, {expression.left.get(), expression.right.get()});
 }
 
 void Printer::visit(const Grouping &expression) {
-    parenthesized("group", {&expression.expression});
+    parenthesized("group", {expression.expression.get()});
 }
 
 void Printer::visit(const Unary &expression) {
-    parenthesized(expression.prefix.lexeme, {&expression.expression});
+    parenthesized(expression.prefix->lexeme, {expression.expression.get()});
 }
 
 void Printer::parenthesized(string name, initializer_list<const Expression*> expressions) {

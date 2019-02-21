@@ -16,12 +16,12 @@ class Scanner {
 
 public:
     explicit Scanner(const std::string& source);
-    std::vector<Token> scan();
+    vector<shared_ptr<Token>> scan();
 
 private:
 
     const std::string &source;
-    std::vector<Token> tokens;
+    vector<shared_ptr<Token>> tokens;
 
     string::const_iterator start;
     string::const_iterator current;
@@ -66,18 +66,18 @@ const std::unordered_map<std::string, TokenType> keywords {
 };
 
 
-vector<Token> scan(const string &source) {
+vector<shared_ptr<Token>> scan(const string &source) {
     return Scanner{source}.scan();
 }
 
-Scanner::Scanner(const std::string &source) : source{source}, current{source.begin()}, start{source.begin()} {}
+Scanner::Scanner(const string &source) : source{source}, current{source.begin()}, start{source.begin()} {}
 
-vector<Token> Scanner::scan() {
+vector<shared_ptr<Token>> Scanner::scan() {
     while (!isAtEnd()) {
         nextToken();
     }
 
-    tokens.push_back({TokenType::END_OF_FILE, "", line});
+    tokens.push_back(make_shared<Token>(TokenType::END_OF_FILE, "", line));
     return tokens;
 }
 
@@ -145,7 +145,7 @@ void Scanner::nextToken() {
                 scanIdentifier();
 
             } else {
-                throw SyntaxError(line, ErrorType::UNEXPECTED_CHARACTER);
+                throw ScanError(line, ErrorType::UNEXPECTED_CHARACTER);
             }
 
             break;
@@ -167,7 +167,7 @@ void Scanner::scanString() {
 
     // If no closing quotation mark has been found, the string is untermindated
     if (isAtEnd()) {
-        throw SyntaxError(line, ErrorType::UNTERMINATED_STRING);
+        throw ScanError(line, ErrorType::UNTERMINATED_STRING);
     }
 
     // Consume closing quotation mark
@@ -204,7 +204,7 @@ void Scanner::scanIdentifier() {
 
     // See if the identifier is a reserved word
     string lexeme {start, current};
-    TokenType type = (keywords.count(lexeme) == 1) ? keywords.at(lexeme) : TokenType::IDENTIFIER;
+    auto type = (keywords.count(lexeme) == 1) ? keywords.at(lexeme) : TokenType::IDENTIFIER;
 
     addToken(type);
 }
@@ -246,7 +246,7 @@ char Scanner::peekNext() {
 }
 
 void Scanner::addToken(const TokenType &type) {
-    tokens.push_back(Token{type, {start, current}, line});
+    tokens.push_back(make_shared<Token>(type, string{start, current}, line));
 }
 
 bool Scanner::isAtEnd() {
@@ -265,18 +265,17 @@ bool isAlphaNumeric(char c) {
     return isAlpha(c) || isdigit(c);
 }
 
-
-SyntaxError::SyntaxError(int line, const SyntaxError::Type &type) : invalid_argument{init_super(line, type)} {}
-
-string SyntaxError::init_super(int line, const SyntaxError::Type &type) {
+string ScanError::what() const noexcept {
     string description;
 
     switch(type) {
-        case ErrorType::UNEXPECTED_CHARACTER: description = "Unexpected character"; break;
-        case ErrorType::UNTERMINATED_STRING: description = "Unterminated string"; break;
+        case ErrorType::UNEXPECTED_CHARACTER:
+            description = "Unexpected character";
+            break;
+        case ErrorType::UNTERMINATED_STRING:
+            description = "Unterminated string";
+            break;
     }
 
-    return "[line " + to_string(line) + "] Syntax Error " + description;
+    return report(line, "", description);
 }
-
-

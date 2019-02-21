@@ -17,7 +17,7 @@ The project is organized into several independent components:
 - to be continued...
 
 ### Scanner
-Source: [`scanner.h`](src/scanner.h),[`token.h`](src/token.h)
+Source: [`scanner.h`](src/scanner/scanner.h),[`token.h`](src/data/token.h)
 
 The scanner dissects Lox source code into a list of syntactical tokens. 
 Contrary to the book's approach, the scanner is implemented as a single 

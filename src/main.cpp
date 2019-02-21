@@ -1,7 +1,8 @@
-#include "scanner.h"
-#include "token.h"
-#include "ast.h"
-#include "ast-tools.h"
+#include "scanner/scanner.h"
+#include "data/token.h"
+#include "data/ast.h"
+#include "utility/ast-tools.h"
+#include "parser/parser.h"
 
 #include <iostream>
 #include <fstream>
@@ -15,35 +16,22 @@ void runPrompt();
 void run(const string &source);
 
 
+#include <memory>
+#include <vector>
+
+
 int main(int argc, char *argv[]) {
 
-    Binary binary {
-        Unary {
-            Token { Token::Type::MINUS, "-", 1 },
-            Literal { Token { Token::Type::NUMBER, "123", 1 } }
-        },
+    if (argc == 1) {
+        runPrompt();
+    } else if (argc == 2) {
+        runFile(string {argv[1]});
+    } else  {
+        cout << "Usage: lox [script]\n";
+        exit(EXIT_FAILURE);
+    }
 
-        Token {Token::Type::STAR, "*", 1},
-
-        Grouping {
-            Literal { Token { Token::Type::NUMBER, "45.67", 1}}
-        }
-    };
-
-    Printer p {};
-
-    cout << p.print(binary) << '\n';
-
-//    if (argc == 1) {
-//        runPrompt();
-//    } else if (argc == 2) {
-//        runFile(string {argv[1]});
-//    } else  {
-//        cout << "Usage: lox [script]\n";
-//        exit(EXIT_FAILURE);
-//    }
-//
-//    return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 void runFile(const string &path) {
@@ -52,7 +40,8 @@ void runFile(const string &path) {
 
     try {
         run(input);
-    } catch (const SyntaxError &e) {
+    } catch (const LoxError &e) {
+        cerr << e.what() << "\n";
         exit(EXIT_FAILURE);
     }
 }
@@ -67,7 +56,8 @@ void runPrompt() {
 
         try {
             run(input);
-        } catch (const SyntaxError &e) {
+        } catch (const LoxError &e) {
+            cerr << e.what() << "\n";
             continue;
         }
     }
@@ -75,16 +65,9 @@ void runPrompt() {
 
 
 void run(const string &source) {
-    vector<Token> tokens;
+    auto tokens = scan(source);
+    auto expression = parse(tokens);
 
-    try {
-        tokens = scan(source);
-    } catch (const SyntaxError &e) {
-        cerr << e.what() << "\n";
-        throw;
-    }
-
-    for (const auto &token : tokens) {
-        cout << token << "\n";
-    }
+    Printer p;
+    cout << p.print(*expression) << "\n";
 }

@@ -33,6 +33,9 @@ struct Token {
     const std::string lexeme;
     const int line;
 
+
+    Token(Type type, std::string lexeme, int line) : type{type}, lexeme{std::move(lexeme)}, line{line} {};
+
     // NOTE in Nystorm's implementation, the Token class contains an `Object literal` member that holds the parsed
     // literal for appropriate types (i.e. identifier, string, number). We don't do this to avoid engineering headaches
     // and rather let the interpreter figure out the literal value based on the lexeme

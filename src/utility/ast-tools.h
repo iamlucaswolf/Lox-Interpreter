@@ -8,7 +8,7 @@
 #include <string>
 #include <sstream>
 #include <initializer_list>
-#include "ast.h"
+#include "data/ast.h"
 
 class Printer : public Visitor {
 

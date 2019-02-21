@@ -26,21 +26,20 @@ public:
     virtual void visit(const Unary &expression) = 0;
 };
 
+// TODO is shared_ptr<Token> really a good idea? Shouldn't we rather move from the Token vector?
 
 struct Expression {
+    virtual ~Expression() = default;
     virtual void accept(Visitor &v) const = 0;
 };
 
-// TODO should expressions own their subexpressions? (probably not, since there are no deconstructors to be called anyway?)
-// TODO caveat: member references can never be rebound or null... -> maybe use unique_ptr<> members and let the constructor
-// TODO std::move() r-value references?
 struct Binary : public Expression {
-    const Expression &left;
-    const Token &infix;
-    const Expression &right;
+    std::unique_ptr<Expression> left;
+    std::shared_ptr<Token> infix;
+    std::unique_ptr<Expression> right;
 
-    Binary(const Expression &left, const Token &infix, const Expression &right)
-        : left{left}, right{right}, infix{infix} {}
+    Binary(std::unique_ptr<Expression> left, std::shared_ptr<Token> infix, std::unique_ptr<Expression> right) :
+        left{ std::move(left) }, infix{ std::move(infix) }, right{ std::move(right) } {}
 
     void accept(Visitor &v) const override {
         v.visit(*this);
@@ -48,19 +47,19 @@ struct Binary : public Expression {
 };
 
 struct Grouping : public Expression {
-    const Expression &expression;
+    std::unique_ptr<Expression> expression;
 
-    explicit Grouping(const Expression &expression) : expression { expression } {}
-
+    explicit Grouping(std::unique_ptr<Expression> expression) : expression{ std::move(expression) } {}
+    
     void accept(Visitor &v) const override {
         v.visit(*this);
     }
 };
 
 struct Literal : public Expression {
-    const Token &literal;
+    std::shared_ptr<Token> literal;
 
-    explicit Literal(const Token &literal) : literal{literal} {}
+    explicit Literal(std::shared_ptr<Token> literal) : literal{ std::move(literal) } {}
 
     void accept(Visitor &v) const override {
         v.visit(*this);
@@ -68,10 +67,11 @@ struct Literal : public Expression {
 };
 
 struct Unary : public Expression {
-    const Token &prefix;
-    const Expression &expression;
+    std::shared_ptr<Token> prefix;
+    std::unique_ptr<Expression> expression;
 
-    Unary(const Token &prefix, const Expression &expression) : prefix{prefix}, expression{expression} {}
+    Unary(std::shared_ptr<Token> prefix, std::unique_ptr<Expression> expression) :
+        prefix{ std::move(prefix) }, expression{ std::move(expression) } {}
 
     void accept(Visitor &v) const override {
         v.visit(*this);
