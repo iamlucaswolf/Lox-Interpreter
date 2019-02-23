@@ -18,11 +18,11 @@ string Printer::print(Expression &expression) {
 
 void Printer::visit(const Literal &expression) {
 
-    const string &lexeme = expression.literal->lexeme;
+    const string &lexeme = expression.token->lexeme;
 
     // TODO maybe this should be made a method of token, like variant<monostate, double, string> value() and then
     // converting the value back to string?
-    switch (expression.literal->type) {
+    switch (expression.token->type) {
 
         case Token::Type::NUMBER:
         case Token::Type::IDENTIFIER:
@@ -30,7 +30,7 @@ void Printer::visit(const Literal &expression) {
             break;
 
         case Token::Type::STRING:
-            buffer << lexeme.substr(1, lexeme.length() - 1);
+            buffer << lexeme.substr(1, lexeme.length() - 2);
             break;
 
         default:
@@ -39,15 +39,15 @@ void Printer::visit(const Literal &expression) {
 }
 
 void Printer::visit(const Binary &expression)  {
-    parenthesized(expression.infix->lexeme, {expression.left.get(), expression.right.get()});
+    parenthesized(expression.token->lexeme, {expression.left.get(), expression.right.get()});
 }
 
 void Printer::visit(const Grouping &expression) {
-    parenthesized("group", {expression.expression.get()});
+    parenthesized("group", {expression.content.get()});
 }
 
 void Printer::visit(const Unary &expression) {
-    parenthesized(expression.prefix->lexeme, {expression.expression.get()});
+    parenthesized(expression.token->lexeme, {expression.operand.get()});
 }
 
 void Printer::parenthesized(string name, initializer_list<const Expression*> expressions) {

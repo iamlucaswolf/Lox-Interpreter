@@ -33,3 +33,4 @@ struct ScanError : public LoxError {
 using ErrorType = ScanError::Type;
 
 #endif //LOX_INTERPRETER_SCANNER_H
+  //

@@ -3,6 +3,7 @@
 #include "data/ast.h"
 #include "utility/ast-tools.h"
 #include "parser/parser.h"
+#include "interpreter/Interpreter.h"
 
 #include <iostream>
 #include <fstream>
@@ -15,10 +16,7 @@ void runFile(const string &path);
 void runPrompt();
 void run(const string &source);
 
-
-#include <memory>
-#include <vector>
-
+static Interpreter interpreter {};
 
 int main(int argc, char *argv[]) {
 
@@ -32,6 +30,7 @@ int main(int argc, char *argv[]) {
     }
 
     return EXIT_SUCCESS;
+
 }
 
 void runFile(const string &path) {
@@ -68,6 +67,5 @@ void run(const string &source) {
     auto tokens = scan(source);
     auto expression = parse(tokens);
 
-    Printer p;
-    cout << p.print(*expression) << "\n";
+    interpreter.interpret(*expression);
 }

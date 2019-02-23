@@ -35,11 +35,11 @@ struct Expression {
 
 struct Binary : public Expression {
     std::unique_ptr<Expression> left;
-    std::shared_ptr<Token> infix;
+    std::shared_ptr<Token> token;
     std::unique_ptr<Expression> right;
 
-    Binary(std::unique_ptr<Expression> left, std::shared_ptr<Token> infix, std::unique_ptr<Expression> right) :
-        left{ std::move(left) }, infix{ std::move(infix) }, right{ std::move(right) } {}
+    Binary(std::unique_ptr<Expression> left, std::shared_ptr<Token> token, std::unique_ptr<Expression> right) :
+        left{ std::move(left) }, token{ std::move(token) }, right{ std::move(right) } {}
 
     void accept(Visitor &v) const override {
         v.visit(*this);
@@ -47,9 +47,9 @@ struct Binary : public Expression {
 };
 
 struct Grouping : public Expression {
-    std::unique_ptr<Expression> expression;
+    std::unique_ptr<Expression> content;
 
-    explicit Grouping(std::unique_ptr<Expression> expression) : expression{ std::move(expression) } {}
+    explicit Grouping(std::unique_ptr<Expression> content) : content{ std::move(content) } {}
     
     void accept(Visitor &v) const override {
         v.visit(*this);
@@ -57,9 +57,9 @@ struct Grouping : public Expression {
 };
 
 struct Literal : public Expression {
-    std::shared_ptr<Token> literal;
+    std::shared_ptr<Token> token;
 
-    explicit Literal(std::shared_ptr<Token> literal) : literal{ std::move(literal) } {}
+    explicit Literal(std::shared_ptr<Token> token) : token{ std::move(token) } {}
 
     void accept(Visitor &v) const override {
         v.visit(*this);
@@ -67,11 +67,11 @@ struct Literal : public Expression {
 };
 
 struct Unary : public Expression {
-    std::shared_ptr<Token> prefix;
-    std::unique_ptr<Expression> expression;
+    std::shared_ptr<Token> token;
+    std::unique_ptr<Expression> operand;
 
-    Unary(std::shared_ptr<Token> prefix, std::unique_ptr<Expression> expression) :
-        prefix{ std::move(prefix) }, expression{ std::move(expression) } {}
+    Unary(std::shared_ptr<Token> token, std::unique_ptr<Expression> operand) :
+        token{ std::move(token) }, operand{ std::move(operand) } {}
 
     void accept(Visitor &v) const override {
         v.visit(*this);
