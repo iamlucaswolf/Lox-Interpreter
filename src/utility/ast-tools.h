@@ -8,9 +8,9 @@
 #include <string>
 #include <sstream>
 #include <initializer_list>
-#include "data/ast.h"
+#include "data/expression.h"
 
-class Printer : public Visitor {
+class Printer : public ExpressionVisitor {
 
     std::stringstream buffer;
 
@@ -18,7 +18,7 @@ class Printer : public Visitor {
 
 public:
 
-    std::string print(Expression &expression);
+    std::string print(::Expression &expression);
 
     void visit(const Binary &expression) override;
     void visit(const Grouping &expression) override;

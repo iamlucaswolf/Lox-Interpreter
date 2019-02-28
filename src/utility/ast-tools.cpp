@@ -2,7 +2,7 @@
 // Created by Lucas Wolf on 2019-02-13.
 //
 
-#include "data/ast.h"
+#include "data/expression.h"
 #include "ast-tools.h"
 
 using namespace std;

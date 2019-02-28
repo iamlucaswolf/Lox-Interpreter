@@ -8,6 +8,25 @@
 
 using namespace std;
 
+// Deep copy
+
+shared_ptr<LoxObject> Number::clone() const {
+    return make_shared<Number>(*this);
+}
+
+shared_ptr<LoxObject> Boolean::clone() const {
+    return make_shared<Boolean>(*this);
+}
+
+shared_ptr<LoxObject> String::clone() const {
+    return make_shared<String>(*this);
+}
+
+shared_ptr<LoxObject> Nil::clone() const {
+    return make_shared<Nil>(*this);
+}
+
+
 // Truthiness
 
 bool LoxObject::isTruthy() const {

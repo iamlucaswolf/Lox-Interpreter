@@ -3,14 +3,60 @@
 //
 
 #include "Interpreter.h"
+#include "RuntimeError.h"
 
 using namespace std;
 
-void Interpreter::interpret(const Expression &expression) {
-    result.reset();
+void Interpreter::interpret(const vector<unique_ptr<Statement>> &statements) {
+    
+    for (const auto &statement : statements) {
+        execute(*statement);
+    }
+}
 
-    evaluate(expression);
-    cout << *result << "\n";
+void Interpreter::execute(const Statement &statement) {
+    statement.accept(*this);
+}
+
+void Interpreter::visit(const ExpressionStatement &statement) {
+    evaluate(*statement.expression);
+}
+
+void Interpreter::visit(const Block &statement) {
+    // WARNING originally in executeBlock() see chapter 8
+
+    try {
+        // Create a new environment enclosed by the current one
+        environment = make_unique<Environment>(move(environment));
+
+        for (const auto &s : statement.statements) {
+            execute(*s);
+        }
+    } catch (const LoxError &e) {
+        // Restore the old environment
+        environment = move(environment->enclosing);
+        throw;
+    }
+
+    // TODO better finally-like solution?
+    // Restore the old environment
+    environment = move(environment->enclosing);
+}
+
+void Interpreter::visit(const Print &statement) {
+    evaluate(*statement.expression);
+    cout << *temporary << "\n";
+}
+
+void Interpreter::visit(const Var &statement) {
+
+    if (statement.initializer) {
+        evaluate(*statement.initializer);
+    } else {
+        temporary = make_shared<Nil>();
+    }
+
+    environment->define(statement.name->lexeme, temporary);
 }
 
 void Interpreter::visit(const Unary &expression) {
@@ -22,7 +68,7 @@ void Interpreter::visit(const Unary &expression) {
 
         // Unary minus (-)
         case TokenType::MINUS: {
-            auto number = dynamic_cast<Number*>(result.get());
+            auto number = dynamic_cast<Number*>(temporary.get());
 
             if (!number) {
                 throw RuntimeError(token, "Operand of unary minus (-) must be of type Number");
@@ -34,7 +80,7 @@ void Interpreter::visit(const Unary &expression) {
 
         // Logical negation (!)
         case TokenType::BANG: {
-            result = make_unique<Boolean>(result->isTruthy());
+            temporary = make_shared<Boolean>(temporary->isTruthy());
             break;
         }
 
@@ -45,11 +91,12 @@ void Interpreter::visit(const Unary &expression) {
 void Interpreter::visit(const Binary &expression) {
 
     // Evaluate left and right-hand operands
+
     evaluate(*expression.left);
-    auto left = move(result);
+    auto left = temporary;
 
     evaluate(*expression.right);
-    auto right = move(result);
+    auto right = temporary;
 
     const Token &token = *expression.token;
 
@@ -81,7 +128,7 @@ void Interpreter::visit(const Binary &expression) {
                     throw RuntimeError(token, "Operands of string concatenation (+) must be of type String");
                 }
 
-                result = make_unique<String>(left_ptr->value + right_ptr->value);
+                temporary = make_shared<String>(left_ptr->value + right_ptr->value);
 
             } else {
                 throw RuntimeError(token, "Operands of \"+\" must either be both of type Number (addition) or String (concatenation");
@@ -111,12 +158,12 @@ void Interpreter::visit(const Binary &expression) {
         }
 
         case TokenType::BANG_EQUAL: {
-            result = make_unique<Boolean>(*left != *right);
+            temporary = make_shared<Boolean>(*left != *right);
             break;
         }
 
         case TokenType::EQUAL_EQUAL: {
-            result = make_unique<Boolean>(*left == *right);
+            temporary = make_unique<Boolean>(*left == *right);
             break;
         }
 
@@ -133,7 +180,7 @@ void Interpreter::arithmetic(const LoxObject &left, const LoxObject &right, cons
     }
 
     auto result = op(left_ptr->value, right_ptr->value);
-    this->result = make_unique<Number>(result);
+    temporary = make_shared<Number>(result);
 }
 
 
@@ -146,7 +193,7 @@ void Interpreter::comparison(const LoxObject &left, const LoxObject &right, cons
     }
 
     auto result = op(left_ptr->value, right_ptr->value);
-    this->result = make_unique<Boolean>(result);
+    temporary = make_shared<Boolean>(result);
 }
 
 const Number* asNumber(const LoxObject &object) {
@@ -165,24 +212,24 @@ void Interpreter::visit(const Literal &expression) {
         case TokenType::NUMBER: {
             double value = stod(lexeme);
 
-            result = make_unique<Number>(value);
+            temporary = make_shared<Number>(value);
             break;
         }
 
         case TokenType::STRING: {
             string value = lexeme.substr(1, lexeme.length() - 2);
 
-            result = make_unique<String>(value);
+            temporary = make_shared<String>(value);
             break;
         }
 
         case TokenType::TRUE: {
-            result = make_unique<Boolean>(true);
+            temporary = make_shared<Boolean>(true);
             break;
         }
 
         case TokenType::FALSE: {
-            result = make_unique<Boolean>(false);
+            temporary = make_shared<Boolean>(false);
             break;
         }
 
@@ -194,13 +241,18 @@ void Interpreter::visit(const Grouping &expression) {
     evaluate(*expression.content);
 }
 
-inline void Interpreter::evaluate(const Expression &expression) {
-    expression.accept(*this);
+void Interpreter::visit(const Variable &expression) {
+    // We have to copy here, other wise expressions like (-a) would change the state of a
+    auto value = environment->get(*expression.name);
+    temporary = value->clone();
 }
 
-// TODO move to own .cpp file
-RuntimeError::RuntimeError(const Token &token, std::string message) : token{token}, message{ std::move(message) } {}
+void Interpreter::visit(const Assign &expression) {
+    evaluate(*expression.value);
 
-std::string RuntimeError::what() const noexcept {
-    return report (token.line, "", message);
+    environment->assign(*expression.name, temporary);
+}
+
+inline void Interpreter::evaluate(const Expression &expression) {
+    expression.accept(*this);
 }

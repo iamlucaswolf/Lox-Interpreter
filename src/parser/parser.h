@@ -5,13 +5,16 @@
 #ifndef LOX_INTERPRETER_PARSER_H
 #define LOX_INTERPRETER_PARSER_H
 
-#include <vector>
-
 #include "error.h"
 #include "data/token.h"
-#include "data/ast.h"
+#include "data/expression.h"
+#include "data/statement.h"
 
-std::unique_ptr<Expression> parse(std::vector<std::shared_ptr<Token>> &tokens);
+#include <vector>
+
+
+// TODO move Statements to std::vector<>?
+std::vector<Statement_ptr> parse(std::vector<Token_ptr> &&tokens);
 
 struct ParseError : LoxError {
     const Token &token;
@@ -28,7 +31,5 @@ struct ParserError : LoxError {
     explicit ParserError(std::vector<ParseError> &&errors);
     std::string what() const noexcept override;
 };
-
-
 
 #endif //LOX_INTERPRETER_PARSER_H

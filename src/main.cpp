@@ -1,6 +1,6 @@
 #include "scanner/scanner.h"
 #include "data/token.h"
-#include "data/ast.h"
+#include "data/expression.h"
 #include "utility/ast-tools.h"
 #include "parser/parser.h"
 #include "interpreter/Interpreter.h"
@@ -65,7 +65,7 @@ void runPrompt() {
 
 void run(const string &source) {
     auto tokens = scan(source);
-    auto expression = parse(tokens);
+    auto statements = parse(move(tokens));
 
-    interpreter.interpret(*expression);
+    interpreter.interpret(statements);
 }

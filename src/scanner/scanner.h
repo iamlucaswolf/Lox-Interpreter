@@ -6,14 +6,14 @@
 #define LOX_INTERPRETER_SCANNER_H
 
 #include "data/token.h"
+#include "error.h"
 
 #include <string>
 #include <vector>
 #include <memory>
-#include <error.h>
 
 
-std::vector<std::shared_ptr<Token>> scan(const std::string &source);
+std::vector<Token_ptr> scan(const std::string &source);
 
 struct ScanError : public LoxError {
 
@@ -33,4 +33,3 @@ struct ScanError : public LoxError {
 using ErrorType = ScanError::Type;
 
 #endif //LOX_INTERPRETER_SCANNER_H
-  //

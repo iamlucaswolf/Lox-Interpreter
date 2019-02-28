@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <memory>
 
 using namespace std;
 
@@ -16,12 +17,12 @@ class Scanner {
 
 public:
     explicit Scanner(const std::string& source);
-    vector<shared_ptr<Token>> scan();
+    vector<Token_ptr> scan();
 
 private:
 
     const std::string &source;
-    vector<shared_ptr<Token>> tokens;
+    vector<Token_ptr> tokens;
 
     string::const_iterator start;
     string::const_iterator current;
@@ -66,19 +67,19 @@ const std::unordered_map<std::string, TokenType> keywords {
 };
 
 
-vector<shared_ptr<Token>> scan(const string &source) {
+vector<Token_ptr> scan(const string &source) {
     return Scanner{source}.scan();
 }
 
 Scanner::Scanner(const string &source) : source{source}, current{source.begin()}, start{source.begin()} {}
 
-vector<shared_ptr<Token>> Scanner::scan() {
+vector<Token_ptr> Scanner::scan() {
     while (!isAtEnd()) {
         nextToken();
     }
 
-    tokens.push_back(make_shared<Token>(TokenType::END_OF_FILE, "", line));
-    return tokens;
+    tokens.push_back( make_unique<Token>(TokenType::END_OF_FILE, "", line) );
+    return move(tokens);
 }
 
 void Scanner::nextToken() {
@@ -246,7 +247,7 @@ char Scanner::peekNext() {
 }
 
 void Scanner::addToken(const TokenType &type) {
-    tokens.push_back(make_shared<Token>(type, string{start, current}, line));
+    tokens.push_back(make_unique<Token>(type, string{start, current}, line));
 }
 
 bool Scanner::isAtEnd() {
