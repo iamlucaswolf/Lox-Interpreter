@@ -59,6 +59,25 @@ void Interpreter::visit(const Var &statement) {
     environment->define(statement.name->lexeme, temporary);
 }
 
+void Interpreter::visit(const If &statement) {
+    evaluate(*statement.condition);
+
+    if (temporary->isTruthy()) {
+        execute(*statement.thenBranch);
+    } else if (statement.elseBranch) {
+        execute(*statement.elseBranch);
+    }
+}
+
+void Interpreter::visit(const While &statement) {
+    evaluate(*statement.condition);
+
+    while (temporary->isTruthy()) {
+        execute(*statement.body);
+        evaluate(*statement.condition);
+    }
+}
+
 void Interpreter::visit(const Unary &expression) {
     evaluate(*expression.operand);
 
@@ -70,7 +89,7 @@ void Interpreter::visit(const Unary &expression) {
         case TokenType::MINUS: {
             auto number = dynamic_cast<Number*>(temporary.get());
 
-            if (!number) {
+            if (not number) {
                 throw RuntimeError(token, "Operand of unary minus (-) must be of type Number");
             }
 
@@ -209,6 +228,11 @@ void Interpreter::visit(const Literal &expression) {
 
     switch (expression.token->type) {
 
+        case TokenType::NIL: {
+            temporary = make_shared<Nil>();
+            break;
+        }
+
         case TokenType::NUMBER: {
             double value = stod(lexeme);
 
@@ -234,6 +258,22 @@ void Interpreter::visit(const Literal &expression) {
         }
 
         default: ;
+    }
+}
+
+void Interpreter::visit(const Logical &expression) {
+    evaluate(*expression.left);
+
+    if (temporary->isTruthy()) {
+        if (expression.token->type == TokenType::AND) {
+            // a and b = b if a, else a
+            evaluate(*expression.right);
+        }
+    } else {
+        if (expression.token->type == TokenType::OR) {
+            // a or b = a if a, else b
+            evaluate(*expression.right);
+        }
     }
 }
 

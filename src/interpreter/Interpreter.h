@@ -32,11 +32,14 @@ public:
     void visit(const Print &statement) override;
     void visit(const Block &statement) override;
     void visit(const Var &statement) override;
+    void visit(const If &statement) override;
+    void visit(const While &statement) override;
 
     // Member functions for Expression visitor interface
     void visit(const Binary &expression) override;
     void visit(const Grouping &expression) override;
     void visit(const Literal &expression) override;
+    void visit(const Logical &expression) override;
     void visit(const Unary &expression) override;
     void visit(const Variable &expression) override;
     void visit(const Assign &expression) override;

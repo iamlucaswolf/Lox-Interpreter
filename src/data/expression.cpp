@@ -16,6 +16,9 @@ Grouping::Grouping(Expression_ptr content)
     
 Literal::Literal(Token_ptr token) 
     : token{move(token)} {}
+
+Logical::Logical(Expression_ptr left, Token_ptr token, Expression_ptr right)
+        : left{move(left)}, token{move(token)}, right{move(right)} {}
     
 Unary::Unary(Token_ptr token, Expression_ptr operand)
     : token{move(token)}, operand{move(operand)} {}
@@ -23,11 +26,9 @@ Unary::Unary(Token_ptr token, Expression_ptr operand)
 Variable::Variable(Token_ptr name)
     : name{move(name)} {}
 
-//Assign::Assign(const Token &name, Expression_ptr value)
-//    : name{name}, value{move(value)} {}
-
 Assign::Assign(Token_ptr name, Expression_ptr value)
     : name{move(name)}, value{move(value)} {}
+
 
 // Visitor
 
@@ -40,6 +41,10 @@ void Grouping::accept(ExpressionVisitor &v) const {
 }
 
 void Literal::accept(ExpressionVisitor &v) const {
+    v.visit(*this);
+}
+
+void Logical::accept(ExpressionVisitor &v) const {
     v.visit(*this);
 }
 

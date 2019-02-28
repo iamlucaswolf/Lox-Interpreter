@@ -12,6 +12,7 @@ struct Expression;
 struct Binary;
 struct Grouping;
 struct Literal;
+struct Logical;
 struct Unary;
 struct Variable;
 struct Assign;
@@ -26,6 +27,7 @@ public:
     virtual void visit(const Binary &expression) = 0;
     virtual void visit(const Grouping &expression) = 0;
     virtual void visit(const Literal &expression) = 0;
+    virtual void visit(const Logical &expression) = 0;
     virtual void visit(const Unary &expression) = 0;
     virtual void visit(const Variable &expression) = 0;
     virtual void visit(const Assign &expression) = 0;
@@ -60,6 +62,16 @@ struct Literal : public Expression {
     Token_ptr token;
 
     explicit Literal(Token_ptr token);
+    void accept(ExpressionVisitor &v) const override;
+};
+
+
+struct Logical : public Expression {
+    Expression_ptr left;
+    Token_ptr token;
+    Expression_ptr right;
+
+    Logical(Expression_ptr left, Token_ptr token, Expression_ptr right);
     void accept(ExpressionVisitor &v) const override;
 };
 

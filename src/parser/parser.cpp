@@ -39,6 +39,9 @@ private:
     Statement_ptr print();
     Statement_ptr block();
     Statement_ptr expressionStatement();
+    Statement_ptr ifStatement();
+    Statement_ptr whileStatement();
+    Statement_ptr forStatement();
 
     // Expression productions
     Expression_ptr expression();
@@ -49,9 +52,12 @@ private:
     Expression_ptr multiplication();
     Expression_ptr unary();
     Expression_ptr primary();
+    Expression_ptr _or();
+    Expression_ptr _and();
 
     // Production patterns
     Expression_ptr binary(const function<Expression_ptr()> &sub_production, initializer_list<TokenType> operator_types);
+    Expression_ptr logical(const function<Expression_ptr()> &sub_production, initializer_list<TokenType> operator_types);
 
     // Panic mode recovery
     void synchronize();
@@ -130,6 +136,18 @@ Statement_ptr Parser::varDeclaration() {
 
 
 Statement_ptr Parser::statement() {
+    if (match({TokenType::IF})) {
+        return ifStatement();
+    }
+
+    if (match({TokenType::WHILE})) {
+        return whileStatement();
+    }
+
+    if (match({TokenType::FOR})) {
+        return forStatement();
+    }
+
     if (match({TokenType::PRINT})) {
         return print();
     }
@@ -141,6 +159,7 @@ Statement_ptr Parser::statement() {
     return expressionStatement();
 }
 
+
 Statement_ptr Parser::expressionStatement() {
     auto value = expression();
 
@@ -148,12 +167,14 @@ Statement_ptr Parser::expressionStatement() {
     return make_unique<ExpressionStatement>(move(value));
 }
 
+
 Statement_ptr Parser::print() {
     auto value = expression();
 
     expect(TokenType::SEMICOLON, "Expect \';\' after value.");
     return make_unique<Print>(move(value));
 }
+
 
 Statement_ptr Parser::block() {
     vector<Statement_ptr> statements;
@@ -166,6 +187,82 @@ Statement_ptr Parser::block() {
     return make_unique<Block>(move(statements));
 }
 
+
+Statement_ptr Parser::ifStatement() {
+    expect(TokenType::LEFT_PAREN, "Expect \'(\' after \'if\'.");
+    Expression_ptr condition = expression();
+    expect(TokenType::RIGHT_PAREN, "Expect \')\' after if condition.");
+
+    Statement_ptr thenBranch = statement();
+    Statement_ptr elseBranch = nullptr;
+
+    if (match({TokenType::ELSE})) {
+        elseBranch = statement();
+    }
+
+    return make_unique<If>(move(condition), move(thenBranch), move(elseBranch));
+}
+
+
+Statement_ptr Parser::whileStatement() {
+    expect(TokenType::LEFT_PAREN, "Expect \'(\' after \'while\'.");
+    Expression_ptr condition = expression();
+    expect(TokenType::RIGHT_PAREN, "Expect \')\' after if condition.");
+
+    Statement_ptr body = statement();
+
+    return make_unique<While>(move(condition), move(body));
+}
+
+Statement_ptr Parser::forStatement() {
+    expect(TokenType::LEFT_PAREN, "Expect \'(\' after \'while\'.");
+
+    // Loop initializer
+    auto initializer = match({TokenType::SEMICOLON})
+        ? nullptr
+        : match({TokenType::VAR})
+            ? varDeclaration()
+            : expressionStatement();
+
+    // Loop condition
+    auto condition = check(TokenType::SEMICOLON)
+        ? make_unique<Literal>(make_unique<Token>(TokenType::TRUE, "true", previous().line))
+        : expression();
+
+
+    expect(TokenType::SEMICOLON, "Expect \';\' after loop condition.");
+
+    // Increment
+    auto increment = check(TokenType::RIGHT_PAREN) ? nullptr : expression();
+    expect(TokenType::RIGHT_PAREN, "Expect \')\' after for clauses.");
+
+    // Body
+    auto body = statement();
+
+    // Piece everything together
+    if (increment) {
+        // have to push_back every element indiviudally, since initializer_lists don't work with move-only types
+        vector<Statement_ptr> statements;
+        statements.push_back(move(body));
+        statements.push_back(make_unique<ExpressionStatement>(move(increment)));
+
+        body = make_unique<Block>(move(statements));
+    }
+
+    body = make_unique<While>(move(condition), move(body));
+
+    if (initializer) {
+        vector<Statement_ptr> statements;
+        statements.push_back(move(initializer));
+        statements.push_back(move(body));
+
+        body = make_unique<Block>(move(statements));
+    }
+
+    return body;
+}
+
+
 Expression_ptr Parser::expression() {
     return assignment();
 }
@@ -174,7 +271,7 @@ Expression_ptr Parser::expression() {
 Expression_ptr Parser::assignment() {
 
     // parse higher-precedence expression
-    auto expression = equality();
+    auto expression = _or();
 
     // if we encounter an equals sign
     if (match({TokenType::EQUAL})) {
@@ -197,6 +294,20 @@ Expression_ptr Parser::assignment() {
     return expression;
 }
 
+
+Expression_ptr Parser::_or() {
+    return logical(
+        bind(&Parser::_and, this),
+        { TokenType::OR }
+    );
+}
+
+Expression_ptr Parser::_and() {
+    return logical(
+        bind(&Parser::equality, this),
+        { TokenType::AND }
+    );
+}
 
 Expression_ptr Parser::equality() {
     return binary(
@@ -235,6 +346,20 @@ Expression_ptr Parser::binary(const function<Expression_ptr()> &sub_production, 
         auto right = sub_production();
 
         left = make_unique<Binary>(move(left), move(operator_), move(right));
+    }
+
+    return left;
+}
+
+Expression_ptr Parser::logical(const function<Expression_ptr()> &sub_production, initializer_list<TokenType> operator_types) {
+    auto left = sub_production();
+
+    while (match(operator_types)) {
+
+        auto operator_ = previous_own();
+        auto right = sub_production();
+
+        left = make_unique<Logical>(move(left), move(operator_), move(right));
     }
 
     return left;

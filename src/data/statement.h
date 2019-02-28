@@ -16,6 +16,8 @@ struct ExpressionStatement;
 struct Print;
 struct Block;
 struct Var;
+struct If;
+struct While;
 
 
 using Statement_ptr = std::unique_ptr<Statement>;
@@ -28,6 +30,8 @@ public:
     virtual void visit(const Print &statement) = 0;
     virtual void visit(const Block &statement) = 0;
     virtual void visit(const Var &statement) = 0;
+    virtual void visit(const If &statement) = 0;
+    virtual void visit(const While &statement) = 0;
 };
 
 
@@ -52,6 +56,7 @@ struct Print : public Statement {
     void accept(StatementVisitor &v) const override;
 };
 
+
 struct Block : public Statement {
     std::vector<Statement_ptr> statements;
 
@@ -65,6 +70,25 @@ struct Var : public Statement {
     Expression_ptr initializer;
 
     explicit Var(Token_ptr name, Expression_ptr initializer);
+    void accept(StatementVisitor &v) const override;
+};
+
+
+struct If : public Statement {
+    Expression_ptr condition;
+    Statement_ptr thenBranch;
+    Statement_ptr elseBranch;
+
+    explicit If(Expression_ptr condition, Statement_ptr thenBranch, Statement_ptr elseBranch);
+    void accept(StatementVisitor &v) const override;
+};
+
+
+struct While : public Statement {
+    Expression_ptr condition;
+    Statement_ptr body;
+
+    explicit While(Expression_ptr condition, Statement_ptr body);
     void accept(StatementVisitor &v) const override;
 };
 
