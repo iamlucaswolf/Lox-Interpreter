@@ -6,6 +6,14 @@
 
 using namespace std;
 
+Token::Token(Token::Type type, std::string &&lexeme, int line)
+    : type{type}, lexeme{std::move(lexeme)}, line{line} {}
+
+Token_ptr Token::New(Token::Type type, std::string &&lexeme, int line) {
+    return make_shared<Token>(type, move(lexeme), line);
+}
+
+
 ostream& operator<<(ostream &out, const TokenType &type) {
 
     // The monstrous (and somewhat stupid) switch-statement below could have been avoided by using common enum

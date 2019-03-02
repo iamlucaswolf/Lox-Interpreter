@@ -12,22 +12,41 @@
 #include <unordered_map>
 #include <memory>
 
-// A lexical space in which variables live
+// Forward declarations
+class Environment;
+
+// Pointer declarations
+using Environment_ptr = std::shared_ptr<Environment>;
+
+
+// Lexical space in which variables live
 class Environment {
 
 public:
-    std::unique_ptr<Environment> enclosing;
-
-    void define(const std::string &name, std::shared_ptr<LoxObject> value);
-    void assign(const Token &name, std::shared_ptr<LoxObject> value);
-    std::shared_ptr<LoxObject> get(const Token &name);
-
     Environment();
-    Environment(std::unique_ptr<Environment> enclosing);
+    Environment(Environment_ptr enclosing);
+    static Environment_ptr New();
+    static Environment_ptr New(Environment_ptr enclosing);
+
+
+    // associates a new variable with a name
+    void define(const std::string &name, Object_ptr value);
+
+    // assigns a new value to an existing variable
+    void assign(const Token &name, Object_ptr value);
+
+    // retrieve the value associated with a name
+    Object_ptr get(const Token &name);
+
+    // the environment in which this environment is nested in
+    Environment_ptr enclosing;
 
 private:
-    std::unordered_map<std::string, std::shared_ptr<LoxObject>> values;
+    std::unordered_map<std::string, Object_ptr> values;
 };
+
+
+
 
 
 #endif //LOX_INTERPRETER_ENVIRONMENT_H

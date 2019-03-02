@@ -29,6 +29,44 @@ Variable::Variable(Token_ptr name)
 Assign::Assign(Token_ptr name, Expression_ptr value)
     : name{move(name)}, value{move(value)} {}
 
+Call::Call(Expression_ptr callee, Token_ptr paren, std::vector<Expression_ptr> &&arguments)
+    : callee{move(callee)}, paren{move(paren)}, arguments{move(arguments)} {}
+
+
+// Factory functions
+
+std::shared_ptr<Binary> Binary::New(Expression_ptr left, Token_ptr token, Expression_ptr right) {
+    return make_shared<Binary>(move(left), move(token), move(right));
+}
+
+std::shared_ptr<Grouping> Grouping::New(Expression_ptr content) {
+    return make_shared<Grouping>(move(content));
+}
+
+std::shared_ptr<Literal> Literal::New(Token_ptr token) {
+    return make_shared<Literal>(move(token));
+}
+
+std::shared_ptr<Logical> Logical::New(Expression_ptr left, Token_ptr token, Expression_ptr right) {
+    return make_shared<Logical>(move(left), move(token), move(right));
+}
+
+std::shared_ptr<Unary> Unary::New(Token_ptr token, Expression_ptr operand) {
+    return make_shared<Unary>(move(token), move(operand));
+}
+
+std::shared_ptr<Variable> Variable::New(Token_ptr name) {
+    return make_shared<Variable>(move(name));
+}
+
+std::shared_ptr<Assign> Assign::New(Token_ptr name, Expression_ptr value) {
+    return make_shared<Assign>(move(name), move(value));
+}
+
+std::shared_ptr<Call> Call::New(Expression_ptr callee, Token_ptr paren, std::vector<Expression_ptr> &&arguments) {
+    return make_shared<Call>(move(callee), move(paren), move(arguments));
+}
+
 
 // Visitor
 
@@ -57,5 +95,9 @@ void Variable::accept(ExpressionVisitor &v) const {
 }
 
 void Assign::accept(ExpressionVisitor &v) const {
+    v.visit(*this);
+}
+
+void Call::accept(ExpressionVisitor &v) const {
     v.visit(*this);
 }

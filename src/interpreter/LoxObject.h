@@ -8,6 +8,10 @@
 #include <string>
 #include <iostream>
 
+struct LoxObject;
+using Object_ptr = std::shared_ptr<LoxObject>;
+
+
 struct LoxObject {
 
 private:
@@ -16,7 +20,7 @@ private:
 
 public:
     virtual ~LoxObject() = default;
-    virtual std::shared_ptr<LoxObject> clone() const = 0;
+    virtual Object_ptr clone() const = 0;
 
     virtual bool isTruthy() const;
 
@@ -36,7 +40,9 @@ public:
     double value;
 
     explicit Number(double value) : value{value} {};
-    std::shared_ptr<LoxObject> clone() const override;
+    static std::shared_ptr<Number> New(double value);
+
+    Object_ptr clone() const override;
 };
 
 
@@ -50,8 +56,10 @@ public:
     bool value;
 
     explicit Boolean(bool value) : value{value} {};
+    static std::shared_ptr<Boolean> New(bool value);
+
     bool isTruthy() const override;
-    std::shared_ptr<LoxObject> clone() const override;
+    Object_ptr clone() const override;
 };
 
 
@@ -65,7 +73,9 @@ public:
     std::string value;
 
     explicit String(std::string value) : value{ std::move(value) } {};
-    std::shared_ptr<LoxObject> clone() const override;
+    static std::shared_ptr<String> New(std::string value);
+
+    Object_ptr clone() const override;
 };
 
 
@@ -76,8 +86,11 @@ private:
     bool equals(const LoxObject &object) const override;
 
 public:
+    static std::shared_ptr<Nil> New();
+
     bool isTruthy() const override;
-    std::shared_ptr<LoxObject> clone() const override;
+    Object_ptr clone() const override;
 };
+
 
 #endif //LOX_INTERPRETER_VALUE_H

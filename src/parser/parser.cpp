@@ -25,8 +25,8 @@ public:
 private:
 
     // The list of Tokens to be parsed into an AST
+    // TODO do we really need to own the entire vector? Isn't the iterator sufficient?
     vector<Token_ptr> tokens;
-
     vector<Token_ptr>::iterator current;
 
     // A log of ParseErrors that occured during parsing
@@ -34,6 +34,7 @@ private:
 
     // Statement productions
     Statement_ptr declaration();
+    Statement_ptr funDeclaration(const std::string &kind);
     Statement_ptr varDeclaration();
     Statement_ptr statement();
     Statement_ptr print();
@@ -42,6 +43,7 @@ private:
     Statement_ptr ifStatement();
     Statement_ptr whileStatement();
     Statement_ptr forStatement();
+    Statement_ptr returnStatement();
 
     // Expression productions
     Expression_ptr expression();
@@ -54,8 +56,10 @@ private:
     Expression_ptr primary();
     Expression_ptr _or();
     Expression_ptr _and();
+    Expression_ptr call();
 
-    // Production patterns
+    // Helper productions
+    Expression_ptr finishCall(Expression_ptr callee);
     Expression_ptr binary(const function<Expression_ptr()> &sub_production, initializer_list<TokenType> operator_types);
     Expression_ptr logical(const function<Expression_ptr()> &sub_production, initializer_list<TokenType> operator_types);
 
@@ -68,13 +72,13 @@ private:
     bool match(initializer_list<TokenType> types);
     bool check(const TokenType &type);
     bool isAtEnd();
-    const Token& advance();
-    Token_ptr advance_own();
+//    const Token& advance();
+    Token_ptr advance();
     const Token& peek();
-    const Token& previous();
-    Token_ptr previous_own();
-    const Token& expect(const TokenType &type, const string &message);
-    Token_ptr expect_own(const TokenType &type, const string &message);
+//    const Token& previous();
+    Token_ptr previous();
+//    const Token& expect(const TokenType &type, const string &message);
+    Token_ptr expect(const TokenType &type, const string &message);
 };
 
 vector<Statement_ptr> parse(vector<Token_ptr> &&tokens) {
@@ -108,6 +112,10 @@ vector<Statement_ptr> Parser::parse() {
 
 Statement_ptr Parser::declaration() {
     try {
+        if (match({TokenType::FUN})) {
+            return funDeclaration("function");
+        }
+
         if (match({TokenType::VAR})) {
             return varDeclaration();
         }
@@ -124,14 +132,43 @@ Statement_ptr Parser::declaration() {
     }
 }
 
+Statement_ptr Parser::funDeclaration(const std::string &kind) {
+    auto name = expect(TokenType::IDENTIFIER, "Expect " + kind + " name.");
+
+    expect(TokenType::LEFT_PAREN, "Expect \'(\' after " + kind + " name.");
+
+    vector<Token_ptr> parameters;
+
+    if (!check(TokenType::RIGHT_PAREN)) {
+        do {
+            if (parameters.size() >= 8) {
+                throw ParseError(peek(), "Cannot have more than 8 paramters.");
+            }
+
+            auto parameter = expect(TokenType::IDENTIFIER, "Expect paramter name.");
+            parameters.push_back(move(parameter));
+        } while (match({TokenType::COMMA}));
+    }
+
+    expect(TokenType::RIGHT_PAREN, "Expect \')\' after parameters.");
+    expect(TokenType::LEFT_BRACE, "Expect \'{\' before " + kind + " body.");
+
+    // TODO it would be better if Function took a Statement_ptr, then we could pass the block directly
+    // TODO for now it's okay because `body` is tied to local scope
+    auto body = block();
+    auto body_ptr = dynamic_cast<Block*>(body.get());
+
+    return Function::New(move(name), move(parameters), move(body_ptr->statements));
+}
+
 
 Statement_ptr Parser::varDeclaration() {
-    Token_ptr name = expect_own(TokenType::IDENTIFIER, "Expect variable name.");
+    Token_ptr name = expect(TokenType::IDENTIFIER, "Expect variable name.");
 
     Expression_ptr initializer = match({TokenType::EQUAL}) ? expression() : nullptr;
 
     expect(TokenType::SEMICOLON, "Expect \';\' after variable declaration.");
-    return make_unique<Var>(move(name), move(initializer));
+    return Var::New(move(name), move(initializer));
 }
 
 
@@ -152,6 +189,10 @@ Statement_ptr Parser::statement() {
         return print();
     }
 
+    if (match({TokenType::RETURN})) {
+        return returnStatement();
+    }
+
     if (match({TokenType::LEFT_BRACE})) {
         return block();
     }
@@ -160,11 +201,27 @@ Statement_ptr Parser::statement() {
 }
 
 
+Statement_ptr Parser::ifStatement() {
+    expect(TokenType::LEFT_PAREN, R"(Expect '(' after 'if'.)");
+    Expression_ptr condition = expression();
+    expect(TokenType::RIGHT_PAREN, "Expect \')\' after if condition.");
+
+    Statement_ptr thenBranch = statement();
+    Statement_ptr elseBranch = nullptr;
+
+    if (match({TokenType::ELSE})) {
+        elseBranch = statement();
+    }
+
+    return If::New(move(condition), move(thenBranch), move(elseBranch));
+}
+
+
 Statement_ptr Parser::expressionStatement() {
     auto value = expression();
 
     expect(TokenType::SEMICOLON, "Expect \';\' after expression.");
-    return make_unique<ExpressionStatement>(move(value));
+    return ExpressionStatement::New(move(value));
 }
 
 
@@ -172,7 +229,7 @@ Statement_ptr Parser::print() {
     auto value = expression();
 
     expect(TokenType::SEMICOLON, "Expect \';\' after value.");
-    return make_unique<Print>(move(value));
+    return Print::New(move(value));
 }
 
 
@@ -184,38 +241,23 @@ Statement_ptr Parser::block() {
     }
 
     expect(TokenType::RIGHT_BRACE, "Expect \'}\' after block.");
-    return make_unique<Block>(move(statements));
-}
 
-
-Statement_ptr Parser::ifStatement() {
-    expect(TokenType::LEFT_PAREN, "Expect \'(\' after \'if\'.");
-    Expression_ptr condition = expression();
-    expect(TokenType::RIGHT_PAREN, "Expect \')\' after if condition.");
-
-    Statement_ptr thenBranch = statement();
-    Statement_ptr elseBranch = nullptr;
-
-    if (match({TokenType::ELSE})) {
-        elseBranch = statement();
-    }
-
-    return make_unique<If>(move(condition), move(thenBranch), move(elseBranch));
+    return Block::New(move(statements));
 }
 
 
 Statement_ptr Parser::whileStatement() {
-    expect(TokenType::LEFT_PAREN, "Expect \'(\' after \'while\'.");
+    expect(TokenType::LEFT_PAREN, R"(Expect '(' after 'while'.)");
     Expression_ptr condition = expression();
     expect(TokenType::RIGHT_PAREN, "Expect \')\' after if condition.");
 
     Statement_ptr body = statement();
 
-    return make_unique<While>(move(condition), move(body));
+    return While::New(move(condition), move(body));
 }
 
 Statement_ptr Parser::forStatement() {
-    expect(TokenType::LEFT_PAREN, "Expect \'(\' after \'while\'.");
+    expect(TokenType::LEFT_PAREN, R"(Expect '(' after 'while'.)");
 
     // Loop initializer
     auto initializer = match({TokenType::SEMICOLON})
@@ -226,7 +268,7 @@ Statement_ptr Parser::forStatement() {
 
     // Loop condition
     auto condition = check(TokenType::SEMICOLON)
-        ? make_unique<Literal>(make_unique<Token>(TokenType::TRUE, "true", previous().line))
+        ? Literal::New(Token::New(TokenType::TRUE, "true", previous()->line))
         : expression();
 
 
@@ -244,22 +286,35 @@ Statement_ptr Parser::forStatement() {
         // have to push_back every element indiviudally, since initializer_lists don't work with move-only types
         vector<Statement_ptr> statements;
         statements.push_back(move(body));
-        statements.push_back(make_unique<ExpressionStatement>(move(increment)));
+        statements.push_back(ExpressionStatement::New(move(increment)));
 
-        body = make_unique<Block>(move(statements));
+        body = Block::New(move(statements));
     }
 
-    body = make_unique<While>(move(condition), move(body));
+    body = While::New(move(condition), move(body));
 
     if (initializer) {
         vector<Statement_ptr> statements;
         statements.push_back(move(initializer));
         statements.push_back(move(body));
 
-        body = make_unique<Block>(move(statements));
+        body = Block::New(move(statements));
     }
 
     return body;
+}
+
+
+Statement_ptr Parser::returnStatement() {
+    Token_ptr keyword = previous();
+    Expression_ptr value = nullptr;
+
+    if (not check(TokenType::SEMICOLON)) {
+        value = expression();
+    }
+
+    expect(TokenType::SEMICOLON, "Expect \';\' after return value.");
+    return Return::New(move(keyword), move(value));
 }
 
 
@@ -284,11 +339,11 @@ Expression_ptr Parser::assignment() {
 
         // if the left-hand expression was an l-value (right now, a variable)
         if (auto variable = dynamic_cast<Variable*>(expression.get())) {
-            return make_unique<Assign>(move(variable->name), move(value));
+            return Assign::New(move(variable->name), move(value));
         }
 
         // since assignments are expressions, a semicolon is expected immediately afterwards anyway, so no need to panic
-        throw ParseError(equals, "Invalid assignment target.");
+        throw ParseError(*equals, "Invalid assignment target.");
     }
 
     return expression;
@@ -342,10 +397,10 @@ Expression_ptr Parser::binary(const function<Expression_ptr()> &sub_production, 
 
     while (match(operator_types)) {
 
-        auto operator_ = previous_own();
+        auto operator_ = previous();
         auto right = sub_production();
 
-        left = make_unique<Binary>(move(left), move(operator_), move(right));
+        left = Binary::New(move(left), move(operator_), move(right));
     }
 
     return left;
@@ -356,10 +411,10 @@ Expression_ptr Parser::logical(const function<Expression_ptr()> &sub_production,
 
     while (match(operator_types)) {
 
-        auto operator_ = previous_own();
+        auto operator_ = previous();
         auto right = sub_production();
 
-        left = make_unique<Logical>(move(left), move(operator_), move(right));
+        left = Logical::New(move(left), move(operator_), move(right));
     }
 
     return left;
@@ -367,13 +422,47 @@ Expression_ptr Parser::logical(const function<Expression_ptr()> &sub_production,
 
 Expression_ptr Parser::unary() {
     if (match({TokenType::BANG, TokenType::MINUS})) {
-        auto prefix = previous_own();
+        auto prefix = previous();
         auto right = unary();
-        return make_unique<Unary>(move(prefix), move(right));
+        return Unary::New(move(prefix), move(right));
     }
 
-    return primary();
+    return call();
 }
+
+Expression_ptr Parser::call() {
+    auto expr = primary();
+
+    while (true) {
+        if (match({TokenType::LEFT_PAREN})) {
+            expr = finishCall(move(expr));
+        } else {
+            break;
+        }
+    }
+
+    return expr;
+}
+
+
+Expression_ptr Parser::finishCall(Expression_ptr callee) {
+    vector<Expression_ptr> arguments;
+
+    if (not check(TokenType::RIGHT_PAREN)) {
+        do {
+            if (arguments.size() >= 8) {
+                errors.emplace_back(ParseError{peek(), "Cannot have more than 8 arguments."});
+            }
+
+            arguments.push_back(expression());
+        } while (match({TokenType::COMMA}));
+    }
+
+    auto paren = expect(TokenType::RIGHT_PAREN, "Expect \')\' after arguments.");
+
+    return Call::New(move(callee), move(paren), move(arguments));
+}
+
 
 Expression_ptr Parser::primary() {
 
@@ -386,29 +475,31 @@ Expression_ptr Parser::primary() {
     };
 
     if (match(types)) {
-        return make_unique<Literal>(move(previous_own()));
+        return Literal::New(move(previous()));
     }
 
     if (match({TokenType::IDENTIFIER})) {
-        return make_unique<Variable>(move(previous_own()));
+        return Variable::New(move(previous()));
     }
 
     if (match({TokenType::LEFT_PAREN})) {
         auto expression = this->expression();
 
         expect(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
-        return make_unique<Grouping>(move(expression));
+        return Grouping::New(move(expression));
     }
 
     throw ParseError(peek(), "Expect expression.");
 }
 
 
+
+
 void Parser::synchronize() {
     advance();
 
     while (!isAtEnd()) {
-        if (previous().type == TokenType::SEMICOLON) {
+        if (previous()->type == TokenType::SEMICOLON) {
             return;
         }
 
@@ -455,47 +546,47 @@ bool Parser::isAtEnd() {
     return peek().type == TokenType::END_OF_FILE;
 }
 
-const Token& Parser::advance() {
-    if (!isAtEnd()) {
-        current++;
-    }
+//const Token& Parser::advance() {
+//    if (!isAtEnd()) {
+//        current++;
+//    }
+//
+//    return previous();
+//}
 
-    return previous();
-}
-
-Token_ptr Parser::advance_own() {
+Token_ptr Parser::advance() {
     if (!isAtEnd()) {
         ++current;
     }
 
-    return previous_own();
+    return previous();
 }
 
 const Token& Parser::peek() {
     return **current;
 }
 
-const Token& Parser::previous() {
-    //return tokens.at(current - 1);
-    return **(current - 1);
+//const Token& Parser::previous() {
+//    //return tokens.at(current - 1);
+//    return **(current - 1);
+//}
+
+Token_ptr Parser::previous() {
+    return *(current - 1);
 }
 
-Token_ptr Parser::previous_own() {
-    return move(*(current - 1));
-}
+//const Token& Parser::expect(const TokenType &type, const string &message) {
+//    if (check(type)) {
+//        return advance();
+//    }
+//
+//    // Enter panic mode
+//    throw ParseError{peek(), message};
+//}
 
-const Token& Parser::expect(const TokenType &type, const string &message) {
+Token_ptr Parser::expect(const TokenType &type, const string &message) {
     if (check(type)) {
         return advance();
-    }
-
-    // Enter panic mode
-    throw ParseError{peek(), message};
-}
-
-Token_ptr Parser::expect_own(const TokenType &type, const string &message) {
-    if (check(type)) {
-        return advance_own();
     }
 
     // Enter panic mode

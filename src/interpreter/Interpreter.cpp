@@ -4,11 +4,32 @@
 
 #include "Interpreter.h"
 #include "RuntimeError.h"
+#include "LoxObject.h"
+#include "Callable.h"
+
+#include <vector>
+#include <chrono>
 
 using namespace std;
 
-void Interpreter::interpret(const vector<unique_ptr<Statement>> &statements) {
-    
+Interpreter::Interpreter() : globals{move(make_unique<Environment>())} {
+
+    environment = globals;
+
+    // Define native functions
+
+    auto clock = make_shared<Native>(0, [](Interpreter &interpreter, vector<Object_ptr> &arguments){
+        auto now = chrono::system_clock::now();
+        auto since = chrono::duration_cast<chrono::seconds>(now.time_since_epoch());
+
+        return Number::New(since.count());
+    });
+
+
+    globals->define("clock", clock);
+}
+
+void Interpreter::interpret(const vector<Statement_ptr> &statements) {
     for (const auto &statement : statements) {
         execute(*statement);
     }
@@ -23,25 +44,34 @@ void Interpreter::visit(const ExpressionStatement &statement) {
 }
 
 void Interpreter::visit(const Block &statement) {
-    // WARNING originally in executeBlock() see chapter 8
+    executeBlock(statement.statements, make_shared<Environment>(this->environment));
+}
+
+void Interpreter::executeBlock(const std::vector<Statement_ptr> &statements, Environment_ptr environment) {
+    // retain current environment
+    auto previous = this->environment;
 
     try {
-        // Create a new environment enclosed by the current one
-        environment = make_unique<Environment>(move(environment));
+        // switch to new environment
+        this->environment = move(environment);
 
-        for (const auto &s : statement.statements) {
+        // execute block statements in new environment
+        for (const auto &s : statements) {
             execute(*s);
         }
-    } catch (const LoxError &e) {
+
+    } catch(...) {
         // Restore the old environment
-        environment = move(environment->enclosing);
+        this->environment = previous;
         throw;
     }
 
-    // TODO better finally-like solution?
+    // TODO better, finally-like solution?
+
     // Restore the old environment
-    environment = move(environment->enclosing);
+    this->environment = previous;
 }
+
 
 void Interpreter::visit(const Print &statement) {
     evaluate(*statement.expression);
@@ -53,9 +83,10 @@ void Interpreter::visit(const Var &statement) {
     if (statement.initializer) {
         evaluate(*statement.initializer);
     } else {
-        temporary = make_shared<Nil>();
+        temporary = Nil::New();
     }
 
+    // copies shared_ptr
     environment->define(statement.name->lexeme, temporary);
 }
 
@@ -78,6 +109,57 @@ void Interpreter::visit(const While &statement) {
     }
 }
 
+
+void Interpreter::visit(const Function &statement) {
+    // copying the vector should invoke copy constructors of its elements (ie. Token_ptr = shared_ptr<Token>), thus
+    // creating new owning pointers that ensure that these things live beyond parsing
+    vector<Token_ptr> parameters = statement.parameters;
+    vector<Statement_ptr> body = statement.body;
+
+    auto function = Function::New(statement.name, move(parameters), move(body));
+    environment->define(statement.name->lexeme, FunctionObject::New(move(function), environment));
+}
+
+
+void Interpreter::visit(const Return &statement) {
+
+    if (statement.value) {
+        evaluate(*statement.value);
+        throw ReturnValue {move(temporary)};
+    }
+
+    throw ReturnValue{};
+}
+
+
+void Interpreter::visit(const Call &expression) {
+    evaluate(*expression.callee);
+    auto callee = temporary;
+
+    vector<Object_ptr> arguments;
+
+    // evaluate arguments to call
+    for (const auto &argument : expression.arguments) {
+        evaluate(*argument);
+        arguments.push_back(temporary);
+    }
+
+    auto callable = dynamic_cast<Callable*>(callee.get());
+
+    if (not callable) {
+        throw RuntimeError(*expression.paren, "Can only call functions and classes.");
+    }
+
+    if (arguments.size() != callable->arity()) {
+        throw RuntimeError(
+            *expression.paren,
+            "Expected " + to_string(callable->arity()) + " arguments but got " + to_string(arguments.size()) + "."
+        );
+    }
+
+    temporary = callable->call(*this, arguments);
+}
+
 void Interpreter::visit(const Unary &expression) {
     evaluate(*expression.operand);
 
@@ -90,7 +172,7 @@ void Interpreter::visit(const Unary &expression) {
             auto number = dynamic_cast<Number*>(temporary.get());
 
             if (not number) {
-                throw RuntimeError(token, "Operand of unary minus (-) must be of type Number");
+                throw RuntimeError(token, "Operand of unary minus (-) must be of type Number.");
             }
 
             number->value = -(number->value);
@@ -99,7 +181,7 @@ void Interpreter::visit(const Unary &expression) {
 
         // Logical negation (!)
         case TokenType::BANG: {
-            temporary = make_shared<Boolean>(temporary->isTruthy());
+            temporary = Boolean::New(temporary->isTruthy());
             break;
         }
 
@@ -144,13 +226,13 @@ void Interpreter::visit(const Binary &expression) {
                 auto right_ptr = dynamic_cast<const String*>(right.get());
 
                 if (!right_ptr) {
-                    throw RuntimeError(token, "Operands of string concatenation (+) must be of type String");
+                    throw RuntimeError(token, "Operands of string concatenation (+) must be of type String.");
                 }
 
-                temporary = make_shared<String>(left_ptr->value + right_ptr->value);
+                temporary = String::New(left_ptr->value + right_ptr->value);
 
             } else {
-                throw RuntimeError(token, "Operands of \"+\" must either be both of type Number (addition) or String (concatenation");
+                throw RuntimeError(token, "Operands of \"+\" must either be both of type Number (addition) or String (concatenation).");
             }
 
             break;
@@ -177,12 +259,12 @@ void Interpreter::visit(const Binary &expression) {
         }
 
         case TokenType::BANG_EQUAL: {
-            temporary = make_shared<Boolean>(*left != *right);
+            temporary = Boolean::New(*left != *right);
             break;
         }
 
         case TokenType::EQUAL_EQUAL: {
-            temporary = make_unique<Boolean>(*left == *right);
+            temporary = Boolean::New(*left == *right);
             break;
         }
 
@@ -195,11 +277,11 @@ void Interpreter::arithmetic(const LoxObject &left, const LoxObject &right, cons
     auto right_ptr = dynamic_cast<const Number*>(&right);
 
     if (!(left_ptr && right_ptr)) {
-        throw RuntimeError(token, "Operands of arithmetic operation (+, -, *, /) must be of type Number");
+        throw RuntimeError(token, "Operands of arithmetic operation (+, -, *, /) must be of type Number.");
     }
 
     auto result = op(left_ptr->value, right_ptr->value);
-    temporary = make_shared<Number>(result);
+    temporary = Number::New(result);
 }
 
 
@@ -208,11 +290,11 @@ void Interpreter::comparison(const LoxObject &left, const LoxObject &right, cons
     auto right_ptr = dynamic_cast<const Number*>(&right);
 
     if (!(left_ptr && right_ptr)) {
-        throw RuntimeError(token, "Operands of arithmetic comparison (>, >=, <, <=) must be of type Number");
+        throw RuntimeError(token, "Operands of arithmetic comparison (>, >=, <, <=) must be of type Number.");
     }
 
     auto result = op(left_ptr->value, right_ptr->value);
-    temporary = make_shared<Boolean>(result);
+    temporary = Boolean::New(result);
 }
 
 const Number* asNumber(const LoxObject &object) {
@@ -229,31 +311,31 @@ void Interpreter::visit(const Literal &expression) {
     switch (expression.token->type) {
 
         case TokenType::NIL: {
-            temporary = make_shared<Nil>();
+            temporary = Nil::New();
             break;
         }
 
         case TokenType::NUMBER: {
             double value = stod(lexeme);
 
-            temporary = make_shared<Number>(value);
+            temporary = Number::New(value);
             break;
         }
 
         case TokenType::STRING: {
             string value = lexeme.substr(1, lexeme.length() - 2);
 
-            temporary = make_shared<String>(value);
+            temporary = String::New(value);
             break;
         }
 
         case TokenType::TRUE: {
-            temporary = make_shared<Boolean>(true);
+            temporary = Boolean::New(true);
             break;
         }
 
         case TokenType::FALSE: {
-            temporary = make_shared<Boolean>(false);
+            temporary = Boolean::New(false);
             break;
         }
 
@@ -284,7 +366,7 @@ void Interpreter::visit(const Grouping &expression) {
 void Interpreter::visit(const Variable &expression) {
     // We have to copy here, other wise expressions like (-a) would change the state of a
     auto value = environment->get(*expression.name);
-    temporary = value->clone();
+    temporary = move(value->clone());
 }
 
 void Interpreter::visit(const Assign &expression) {

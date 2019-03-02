@@ -8,21 +8,40 @@
 
 using namespace std;
 
+// Factory Functions
+
+shared_ptr<Number> Number::New(double value) {
+    return make_shared<Number>(value);   
+}
+
+shared_ptr<Boolean> Boolean::New(bool value) {
+    return make_shared<Boolean>(value);
+}
+
+shared_ptr<String> String::New(string value) {
+    return make_shared<String>(move(value));
+}
+
+shared_ptr<Nil> Nil::New() {
+    return make_shared<Nil>();
+}
+
+
 // Deep copy
 
-shared_ptr<LoxObject> Number::clone() const {
+Object_ptr Number::clone() const {
     return make_shared<Number>(*this);
 }
 
-shared_ptr<LoxObject> Boolean::clone() const {
+Object_ptr Boolean::clone() const {
     return make_shared<Boolean>(*this);
 }
 
-shared_ptr<LoxObject> String::clone() const {
+Object_ptr String::clone() const {
     return make_shared<String>(*this);
 }
 
-shared_ptr<LoxObject> Nil::clone() const {
+Object_ptr Nil::clone() const {
     return make_shared<Nil>(*this);
 }
 
@@ -108,4 +127,3 @@ bool Nil::equals(const LoxObject &object) const {
 
     return false;
 }
-

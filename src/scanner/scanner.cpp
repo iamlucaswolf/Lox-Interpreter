@@ -78,7 +78,7 @@ vector<Token_ptr> Scanner::scan() {
         nextToken();
     }
 
-    tokens.push_back( make_unique<Token>(TokenType::END_OF_FILE, "", line) );
+    tokens.push_back( Token::New(TokenType::END_OF_FILE, "", line) );
     return move(tokens);
 }
 
@@ -247,7 +247,7 @@ char Scanner::peekNext() {
 }
 
 void Scanner::addToken(const TokenType &type) {
-    tokens.push_back(make_unique<Token>(type, string{start, current}, line));
+    tokens.push_back(Token::New(type, string{start, current}, line));
 }
 
 bool Scanner::isAtEnd() {

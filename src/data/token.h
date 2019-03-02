@@ -9,8 +9,16 @@
 #include <iostream>
 #include <memory>
 
+// Forward declarations
+struct Token;
+
+// Pointer declarations
+using Token_ptr = std::shared_ptr<Token>;
+
+
 struct Token {
 
+public:
     enum class Type {
         // NOTE The C++ Core Guidelines explicitly advise to use lowercase identifiers for enum members (rule Enum.5). We
         // deliberately break this rule, since most keywords in Lox are reserved words in C++.
@@ -36,11 +44,11 @@ struct Token {
     const std::string lexeme;
     const int line;
 
-    Token(Type type, std::string lexeme, int line) : type{type}, lexeme{std::move(lexeme)}, line{line} {};
+    Token(Type type, std::string &&lexeme, int line);
+    static Token_ptr New(Type type, std::string &&lexeme, int line);
 };
 
 using TokenType = Token::Type;
-using Token_ptr = std::unique_ptr<Token>;
 
 std::ostream& operator<<(std::ostream &out, const Token &token);
 std::ostream& operator<<(std::ostream &out, const TokenType &type);

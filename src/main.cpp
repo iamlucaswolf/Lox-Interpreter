@@ -18,6 +18,8 @@ void run(const string &source);
 
 static Interpreter interpreter {};
 
+#include "interpreter/Callable.h"
+
 int main(int argc, char *argv[]) {
 
     if (argc == 1) {
@@ -30,7 +32,6 @@ int main(int argc, char *argv[]) {
     }
 
     return EXIT_SUCCESS;
-
 }
 
 void runFile(const string &path) {

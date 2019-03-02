@@ -7,6 +7,8 @@
 
 #include "token.h"
 
+#include <vector>
+
 // Forward declarations
 struct Expression;
 struct Binary;
@@ -16,11 +18,15 @@ struct Logical;
 struct Unary;
 struct Variable;
 struct Assign;
+struct Call;
 
 
-using Expression_ptr = std::unique_ptr<Expression>;
+using Expression_ptr = std::shared_ptr<Expression>;
 
 
+/*
+ * Visitor interface for Expressions
+ */
 class ExpressionVisitor {
 
 public:
@@ -31,21 +37,25 @@ public:
     virtual void visit(const Unary &expression) = 0;
     virtual void visit(const Variable &expression) = 0;
     virtual void visit(const Assign &expression) = 0;
+    virtual void visit(const Call &expression) = 0;
 };
 
-
+// Abstract base struct for Expressions
 struct Expression {
     virtual ~Expression() = default;
     virtual void accept(ExpressionVisitor &v) const = 0;
 };
 
 
+// A binary arithmetic operation <left op right>
 struct Binary : public Expression {
     Expression_ptr left;
     Token_ptr token;
     Expression_ptr right;
 
-    Binary(Expression_ptr left, Token_ptr token, Expression_ptr right);
+    explicit Binary(Expression_ptr left, Token_ptr token, Expression_ptr right);
+    static std::shared_ptr<Binary> New(Expression_ptr left, Token_ptr token, Expression_ptr right);
+
     void accept(ExpressionVisitor &v) const override;
 };
 
@@ -54,6 +64,8 @@ struct Grouping : public Expression {
     Expression_ptr content;
 
     explicit Grouping(Expression_ptr content);
+    static std::shared_ptr<Grouping> New(Expression_ptr content);
+
     void accept(ExpressionVisitor &v) const override;
 };
 
@@ -62,6 +74,8 @@ struct Literal : public Expression {
     Token_ptr token;
 
     explicit Literal(Token_ptr token);
+    static std::shared_ptr<Literal> New(Token_ptr token);
+
     void accept(ExpressionVisitor &v) const override;
 };
 
@@ -71,7 +85,9 @@ struct Logical : public Expression {
     Token_ptr token;
     Expression_ptr right;
 
-    Logical(Expression_ptr left, Token_ptr token, Expression_ptr right);
+    explicit Logical(Expression_ptr left, Token_ptr token, Expression_ptr right);
+    static std::shared_ptr<Logical> New(Expression_ptr left, Token_ptr token, Expression_ptr right);
+
     void accept(ExpressionVisitor &v) const override;
 };
 
@@ -80,7 +96,9 @@ struct Unary : public Expression {
     Token_ptr token;
     Expression_ptr operand;
 
-    Unary(Token_ptr token, Expression_ptr operand);
+    explicit Unary(Token_ptr token, Expression_ptr operand);
+    static std::shared_ptr<Unary> New(Token_ptr token, Expression_ptr operand);
+
     void accept(ExpressionVisitor &v) const override;
 };
 
@@ -89,16 +107,31 @@ struct Variable : public Expression {
     Token_ptr name;
 
     explicit Variable(Token_ptr name);
+    static std::shared_ptr<Variable> New(Token_ptr name);
+
     void accept(ExpressionVisitor &v) const override;
 };
 
 
 struct Assign : public Expression {
-    // TODO possible to own Variable and use the nested name pointer?
     Token_ptr name;
     Expression_ptr  value;
 
     Assign(Token_ptr name, Expression_ptr value);
+    static std::shared_ptr<Assign> New(Token_ptr name, Expression_ptr value);
+
+    void accept(ExpressionVisitor &v) const override;
+};
+
+
+struct Call : public Expression {
+    Expression_ptr callee;
+    Token_ptr paren; //closing!
+    std::vector<Expression_ptr> arguments;
+
+    Call(Expression_ptr callee, Token_ptr paren, std::vector<Expression_ptr> &&arguments);
+    static std::shared_ptr<Call> New(Expression_ptr callee, Token_ptr paren, std::vector<Expression_ptr> &&arguments);
+
     void accept(ExpressionVisitor &v) const override;
 };
 
