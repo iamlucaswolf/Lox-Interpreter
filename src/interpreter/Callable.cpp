@@ -84,7 +84,7 @@ Object_ptr FunctionObject::call(Interpreter &interpreter, std::vector<Object_ptr
     auto environment = Environment::New(closure);
 
     for (int i = 0; i < declaration->parameters.size(); ++i) {
-        auto argument = arguments.at(i)->clone();
+        auto argument = arguments.at(i);
         environment->define(declaration->parameters.at(i)->lexeme, move(argument));
     }
 

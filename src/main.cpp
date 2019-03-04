@@ -4,6 +4,7 @@
 #include "utility/ast-tools.h"
 #include "parser/parser.h"
 #include "interpreter/Interpreter.h"
+#include "resolver/Resolver.h"
 
 #include <iostream>
 #include <fstream>
@@ -67,6 +68,8 @@ void runPrompt() {
 void run(const string &source) {
     auto tokens = scan(source);
     auto statements = parse(move(tokens));
+
+    resolve(statements, interpreter);
 
     interpreter.interpret(statements);
 }

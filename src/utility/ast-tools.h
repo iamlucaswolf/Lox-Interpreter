@@ -14,16 +14,16 @@ class Printer : public ExpressionVisitor {
 
     std::stringstream buffer;
 
-    void parenthesized(std::string name, std::initializer_list<const Expression*> expressions);
+    void parenthesized(std::string name, std::initializer_list<Expression*> expressions);
 
 public:
 
     std::string print(::Expression &expression);
 
-    void visit(const Binary &expression) override;
-    void visit(const Grouping &expression) override;
-    void visit(const Literal &expression) override;
-    void visit(const Unary &expression) override;
+    void visit(Binary &expression) override;
+    void visit(Grouping &expression) override;
+    void visit(Literal &expression) override;
+    void visit(Unary &expression) override;
 
 };
 

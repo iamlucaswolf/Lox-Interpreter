@@ -34,15 +34,18 @@ public:
 
     // assigns a new value to an existing variable
     void assign(const Token &name, Object_ptr value);
+    void assignAt(int distance, const Token &name, Object_ptr value);
 
     // retrieve the value associated with a name
     Object_ptr get(const Token &name);
+    Object_ptr getAt(int distance, std::string name);
 
     // the environment in which this environment is nested in
     Environment_ptr enclosing;
 
 private:
     std::unordered_map<std::string, Object_ptr> values;
+    Environment& ancestor(int distance);
 };
 
 

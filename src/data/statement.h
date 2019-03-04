@@ -28,20 +28,20 @@ using Statement_ptr = std::shared_ptr<Statement>;
 class StatementVisitor {
 
 public:
-    virtual void visit(const ExpressionStatement &statement) = 0;
-    virtual void visit(const Print &statement) = 0;
-    virtual void visit(const Block &statement) = 0;
-    virtual void visit(const Var &statement) = 0;
-    virtual void visit(const If &statement) = 0;
-    virtual void visit(const While &statement) = 0;
-    virtual void visit(const Function &statement) = 0;
-    virtual void visit(const Return &statement) = 0;
+    virtual void visit(ExpressionStatement &statement) = 0;
+    virtual void visit(Print &statement) = 0;
+    virtual void visit(Block &statement) = 0;
+    virtual void visit(Var &statement) = 0;
+    virtual void visit(If &statement) = 0;
+    virtual void visit(While &statement) = 0;
+    virtual void visit(Function &statement) = 0;
+    virtual void visit(Return &statement) = 0;
 };
 
 
 struct Statement{
     virtual ~Statement() = default;
-    virtual void accept(StatementVisitor &v) const = 0;
+    virtual void accept(StatementVisitor &v) = 0;
 };
 
 
@@ -51,7 +51,7 @@ struct ExpressionStatement : public Statement {
     explicit ExpressionStatement(Expression_ptr expression);
     static std::shared_ptr<ExpressionStatement> New(Expression_ptr expression);
 
-    void accept(StatementVisitor &v) const override;
+    void accept(StatementVisitor &v) override;
 };
 
 
@@ -61,7 +61,7 @@ struct Print : public Statement {
     explicit Print(Expression_ptr expression);
     static std::shared_ptr<Print> New(Expression_ptr expression);
 
-    void accept(StatementVisitor &v) const override;
+    void accept(StatementVisitor &v) override;
 };
 
 
@@ -71,7 +71,7 @@ struct Block : public Statement {
     explicit Block(std::vector<Statement_ptr> &&statements);
     static std::shared_ptr<Block> New(std::vector<Statement_ptr> &&statements);
 
-    void accept(StatementVisitor &v) const override;
+    void accept(StatementVisitor &v) override;
 };
 
 
@@ -82,7 +82,7 @@ struct Var : public Statement {
     explicit Var(Token_ptr name, Expression_ptr initializer);
     static std::shared_ptr<Var> New(Token_ptr name, Expression_ptr initializer);
 
-    void accept(StatementVisitor &v) const override;
+    void accept(StatementVisitor &v) override;
 };
 
 
@@ -94,7 +94,7 @@ struct If : public Statement {
     explicit If(Expression_ptr condition, Statement_ptr thenBranch, Statement_ptr elseBranch);
     static std::shared_ptr<If> New(Expression_ptr condition, Statement_ptr thenBranch, Statement_ptr elseBranch);
 
-    void accept(StatementVisitor &v) const override;
+    void accept(StatementVisitor &v) override;
 };
 
 
@@ -105,7 +105,7 @@ struct While : public Statement {
     explicit While(Expression_ptr condition, Statement_ptr body);
     static std::shared_ptr<While> New(Expression_ptr condition, Statement_ptr body);
 
-    void accept(StatementVisitor &v) const override;
+    void accept(StatementVisitor &v) override;
 };
 
 
@@ -117,7 +117,7 @@ struct Function : public Statement {
     explicit Function(Token_ptr name, std::vector<Token_ptr> &&parameters, std::vector<Statement_ptr> &&body);
     static std::shared_ptr<Function> New(Token_ptr name, std::vector<Token_ptr> &&parameters, std::vector<Statement_ptr> &&body);
 
-    void accept(StatementVisitor &v) const override;
+    void accept(StatementVisitor &v) override;
 };
 
 
@@ -128,6 +128,6 @@ struct Return : public Statement {
     explicit Return(Token_ptr keyword, Expression_ptr value);
     static std::shared_ptr<Return> New(Token_ptr keyword, Expression_ptr value);
 
-    void accept(StatementVisitor &v) const override;
+    void accept(StatementVisitor &v) override;
 };
 #endif //LOX_INTERPRETER_STATEMENT_H

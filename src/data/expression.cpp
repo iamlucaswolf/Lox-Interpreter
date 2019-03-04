@@ -70,34 +70,34 @@ std::shared_ptr<Call> Call::New(Expression_ptr callee, Token_ptr paren, std::vec
 
 // Visitor
 
-void Binary::accept(ExpressionVisitor &v) const {
+void Binary::accept(ExpressionVisitor &v) {
     v.visit(*this);
 }
 
-void Grouping::accept(ExpressionVisitor &v) const {
+void Grouping::accept(ExpressionVisitor &v) {
     v.visit(*this);
 }
 
-void Literal::accept(ExpressionVisitor &v) const {
+void Literal::accept(ExpressionVisitor &v) {
     v.visit(*this);
 }
 
-void Logical::accept(ExpressionVisitor &v) const {
+void Logical::accept(ExpressionVisitor &v) {
     v.visit(*this);
 }
 
-void Unary::accept(ExpressionVisitor &v) const {
+void Unary::accept(ExpressionVisitor &v) {
     v.visit(*this);
 }
 
-void Variable::accept(ExpressionVisitor &v) const {
+void Variable::accept(ExpressionVisitor &v) {
     v.visit(*this);
 }
 
-void Assign::accept(ExpressionVisitor &v) const {
+void Assign::accept(ExpressionVisitor &v) {
     v.visit(*this);
 }
 
-void Call::accept(ExpressionVisitor &v) const {
+void Call::accept(ExpressionVisitor &v) {
     v.visit(*this);
 }

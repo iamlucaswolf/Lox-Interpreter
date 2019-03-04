@@ -30,20 +30,20 @@ Interpreter::Interpreter() : globals{move(make_unique<Environment>())} {
 }
 
 void Interpreter::interpret(const vector<Statement_ptr> &statements) {
-    for (const auto &statement : statements) {
+    for (auto &statement : statements) {
         execute(*statement);
     }
 }
 
-void Interpreter::execute(const Statement &statement) {
+void Interpreter::execute(Statement &statement) {
     statement.accept(*this);
 }
 
-void Interpreter::visit(const ExpressionStatement &statement) {
+void Interpreter::visit(ExpressionStatement &statement) {
     evaluate(*statement.expression);
 }
 
-void Interpreter::visit(const Block &statement) {
+void Interpreter::visit(Block &statement) {
     executeBlock(statement.statements, make_shared<Environment>(this->environment));
 }
 
@@ -72,13 +72,17 @@ void Interpreter::executeBlock(const std::vector<Statement_ptr> &statements, Env
     this->environment = previous;
 }
 
+void Interpreter::resolve(Expression &expression, int depth) {
+    locals[&expression] = depth;
+}
 
-void Interpreter::visit(const Print &statement) {
+
+void Interpreter::visit(Print &statement) {
     evaluate(*statement.expression);
     cout << *temporary << "\n";
 }
 
-void Interpreter::visit(const Var &statement) {
+void Interpreter::visit(Var &statement) {
 
     if (statement.initializer) {
         evaluate(*statement.initializer);
@@ -90,7 +94,7 @@ void Interpreter::visit(const Var &statement) {
     environment->define(statement.name->lexeme, temporary);
 }
 
-void Interpreter::visit(const If &statement) {
+void Interpreter::visit(If &statement) {
     evaluate(*statement.condition);
 
     if (temporary->isTruthy()) {
@@ -100,7 +104,7 @@ void Interpreter::visit(const If &statement) {
     }
 }
 
-void Interpreter::visit(const While &statement) {
+void Interpreter::visit(While &statement) {
     evaluate(*statement.condition);
 
     while (temporary->isTruthy()) {
@@ -110,7 +114,7 @@ void Interpreter::visit(const While &statement) {
 }
 
 
-void Interpreter::visit(const Function &statement) {
+void Interpreter::visit(Function &statement) {
     // copying the vector should invoke copy constructors of its elements (ie. Token_ptr = shared_ptr<Token>), thus
     // creating new owning pointers that ensure that these things live beyond parsing
     vector<Token_ptr> parameters = statement.parameters;
@@ -121,7 +125,7 @@ void Interpreter::visit(const Function &statement) {
 }
 
 
-void Interpreter::visit(const Return &statement) {
+void Interpreter::visit(Return &statement) {
 
     if (statement.value) {
         evaluate(*statement.value);
@@ -132,7 +136,7 @@ void Interpreter::visit(const Return &statement) {
 }
 
 
-void Interpreter::visit(const Call &expression) {
+void Interpreter::visit(Call &expression) {
     evaluate(*expression.callee);
     auto callee = temporary;
 
@@ -160,7 +164,7 @@ void Interpreter::visit(const Call &expression) {
     temporary = callable->call(*this, arguments);
 }
 
-void Interpreter::visit(const Unary &expression) {
+void Interpreter::visit(Unary &expression) {
     evaluate(*expression.operand);
 
     const Token &token = *expression.token;
@@ -189,7 +193,7 @@ void Interpreter::visit(const Unary &expression) {
     }
 }
 
-void Interpreter::visit(const Binary &expression) {
+void Interpreter::visit(Binary &expression) {
 
     // Evaluate left and right-hand operands
 
@@ -305,7 +309,7 @@ const Number* asNumber(const LoxObject &object) {
     }
 }
 
-void Interpreter::visit(const Literal &expression) {
+void Interpreter::visit(Literal &expression) {
     const string &lexeme = expression.token->lexeme;
 
     switch (expression.token->type) {
@@ -343,7 +347,7 @@ void Interpreter::visit(const Literal &expression) {
     }
 }
 
-void Interpreter::visit(const Logical &expression) {
+void Interpreter::visit(Logical &expression) {
     evaluate(*expression.left);
 
     if (temporary->isTruthy()) {
@@ -359,22 +363,40 @@ void Interpreter::visit(const Logical &expression) {
     }
 }
 
-void Interpreter::visit(const Grouping &expression) {
+void Interpreter::visit(Grouping &expression) {
     evaluate(*expression.content);
 }
 
-void Interpreter::visit(const Variable &expression) {
+void Interpreter::visit(Variable &expression) {
     // We have to copy here, other wise expressions like (-a) would change the state of a
-    auto value = environment->get(*expression.name);
+//    auto value = environment->get(*expression.name);
+    auto value = lookUpVariable(*expression.name, expression);
     temporary = move(value->clone());
 }
 
-void Interpreter::visit(const Assign &expression) {
+void Interpreter::visit(Assign &expression) {
     evaluate(*expression.value);
 
-    environment->assign(*expression.name, temporary);
+    auto distance = locals.find(&expression);
+
+    if (distance != locals.end()) {
+        environment->assignAt(distance->second, *expression.name, temporary);
+    } else {
+        globals->assign(*expression.name, temporary);
+    }
+//    environment->assign(*expression.name, temporary);
 }
 
-inline void Interpreter::evaluate(const Expression &expression) {
+Object_ptr Interpreter::lookUpVariable(const Token &name, Expression &expression) {
+    auto distance = locals.find(&expression);
+
+    if (distance != locals.end()) {
+        return environment->getAt(distance->second, name.lexeme);
+    } else {
+        return globals->get(name);
+    }
+}
+
+inline void Interpreter::evaluate(Expression &expression) {
     expression.accept(*this);
 }

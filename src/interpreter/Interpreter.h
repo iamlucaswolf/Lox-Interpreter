@@ -29,29 +29,30 @@ public:
 
     // Interpret Lox code
     void interpret(const std::vector<Statement_ptr> &statements);
-    void evaluate(const Expression &expression);
-    void execute(const Statement &statement);
+    void evaluate(Expression &expression);
+    void execute(Statement &statement);
     void executeBlock(const std::vector<Statement_ptr> &statements, Environment_ptr environment);
+    void resolve(Expression &expression, int depth);
 
     // Member functions for Statement visitor interface
-    void visit(const ExpressionStatement &statement) override;
-    void visit(const Print &statement) override;
-    void visit(const Block &statement) override;
-    void visit(const Var &statement) override;
-    void visit(const If &statement) override;
-    void visit(const While &statement) override;
-    void visit(const Function &statement) override;
-    void visit(const Return &statement) override;
+    void visit(ExpressionStatement &statement) override;
+    void visit(Print &statement) override;
+    void visit(Block &statement) override;
+    void visit(Var &statement) override;
+    void visit(If &statement) override;
+    void visit(While &statement) override;
+    void visit(Function &statement) override;
+    void visit(Return &statement) override;
 
     // Member functions for Expression visitor interface
-    void visit(const Binary &expression) override;
-    void visit(const Grouping &expression) override;
-    void visit(const Literal &expression) override;
-    void visit(const Logical &expression) override;
-    void visit(const Unary &expression) override;
-    void visit(const Variable &expression) override;
-    void visit(const Assign &expression) override;
-    void visit(const Call &expression) override;
+    void visit(Binary &expression) override;
+    void visit(Grouping &expression) override;
+    void visit(Literal &expression) override;
+    void visit(Logical &expression) override;
+    void visit(Unary &expression) override;
+    void visit(Variable &expression) override;
+    void visit(Assign &expression) override;
+    void visit(Call &expression) override;
 
 private:
     // intermediate result of expression evaluation
@@ -59,6 +60,11 @@ private:
 
     // currently active environment
     Environment_ptr environment;
+
+    // side table for resolutions
+    std::unordered_map<Expression*, int> locals;
+
+    Object_ptr lookUpVariable(const Token &name, Expression &expression);
 
     // Helper functions
     void comparison(const LoxObject &left, const LoxObject &right, const Comparison &op, const Token &token);

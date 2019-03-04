@@ -16,7 +16,7 @@ string Printer::print(Expression &expression) {
     return buffer.str();
 }
 
-void Printer::visit(const Literal &expression) {
+void Printer::visit(Literal &expression) {
 
     const string &lexeme = expression.token->lexeme;
 
@@ -38,19 +38,19 @@ void Printer::visit(const Literal &expression) {
     }
 }
 
-void Printer::visit(const Binary &expression)  {
+void Printer::visit(Binary &expression)  {
     parenthesized(expression.token->lexeme, {expression.left.get(), expression.right.get()});
 }
 
-void Printer::visit(const Grouping &expression) {
+void Printer::visit(Grouping &expression) {
     parenthesized("group", {expression.content.get()});
 }
 
-void Printer::visit(const Unary &expression) {
+void Printer::visit(Unary &expression) {
     parenthesized(expression.token->lexeme, {expression.operand.get()});
 }
 
-void Printer::parenthesized(string name, initializer_list<const Expression*> expressions) {
+void Printer::parenthesized(string name, initializer_list<Expression*> expressions) {
     buffer << "(" << name;
 
     for (const auto &expression : expressions) {

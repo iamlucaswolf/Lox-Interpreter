@@ -70,34 +70,34 @@ std::shared_ptr<Return> Return::New(Token_ptr keyword, Expression_ptr value) {
 
 // Visitor
 
-void ExpressionStatement::accept(StatementVisitor &v) const {
+void ExpressionStatement::accept(StatementVisitor &v) {
     v.visit(*this);
 }
 
-void Print::accept(StatementVisitor &v) const {
+void Print::accept(StatementVisitor &v) {
     v.visit(*this);
 }
 
-void Block::accept(StatementVisitor &v) const {
+void Block::accept(StatementVisitor &v) {
     v.visit(*this);
 }
 
-void Var::accept(StatementVisitor &v) const {
+void Var::accept(StatementVisitor &v) {
     v.visit(*this);
 }
 
-void If::accept(StatementVisitor &v) const {
+void If::accept(StatementVisitor &v) {
     v.visit(*this);
 }
 
-void While::accept(StatementVisitor &v) const {
+void While::accept(StatementVisitor &v) {
     v.visit(*this);
 }
 
-void Function::accept(StatementVisitor &v) const {
+void Function::accept(StatementVisitor &v) {
     v.visit(*this);
 }
 
-void Return::accept(StatementVisitor &v) const {
+void Return::accept(StatementVisitor &v) {
     v.visit(*this);
 }

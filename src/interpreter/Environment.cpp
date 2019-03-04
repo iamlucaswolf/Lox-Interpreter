@@ -27,12 +27,11 @@ Environment_ptr Environment::New(Environment_ptr enclosing) {
     return make_shared<Environment>(move(enclosing));
 }
 
-
 void Environment::define(const string &name, shared_ptr<LoxObject> value) {
     values[name] = move(value);
 }
 
-shared_ptr<LoxObject> Environment::get(const Token &name) {
+Object_ptr Environment::get(const Token &name) {
     // try to retrieve the value referred to by name
     auto value = values.find(name.lexeme);
 
@@ -50,6 +49,20 @@ shared_ptr<LoxObject> Environment::get(const Token &name) {
     throw RuntimeError(name, "Undefined variable \'" + name.lexeme + "\'.");
 }
 
+Object_ptr Environment::getAt(int distance, string name) {
+    return ancestor(distance).values[name];
+}
+
+Environment& Environment::ancestor(int distance) {
+    auto environment = this;
+
+    for (int i = 0; i < distance; i++) {
+        environment = environment->enclosing.get();
+    }
+
+    return *environment;
+}
+
 void Environment::assign(const Token &name, shared_ptr<LoxObject> value) {
 
     if (values.find(name.lexeme) != values.end()) {
@@ -63,4 +76,8 @@ void Environment::assign(const Token &name, shared_ptr<LoxObject> value) {
     }
 
     throw RuntimeError(name, "Undefined variable \'" + name.lexeme + "\'.");
+}
+
+void Environment::assignAt(int distance, const Token &name, Object_ptr value) {
+    ancestor(distance).values[name.lexeme] = move(value);
 }
